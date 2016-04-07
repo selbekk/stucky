@@ -10,12 +10,13 @@
     "babel": "^6.5.2",
     "babel-preset-es2015": "^6.6.0",
     "babelify": "^7.2.0",
-    "browserify": "^13.0.0"
+    "browserify": "^13.0.0",
+    "uglify-js": "^2.6.2"
   },
   "scripts": {
     "prebuild": "rm -rf dist && mkdir dist",
-    "build": "browserify src/stucky.js -t babelify | dist/stucky.js"
-    
+    "build": "browserify src/stucky.js -t babelify -o dist/stucky.js",
+    "postbuild": "uglifyjs dist/stucky.js > dist/stucky.min.js"
   },
   "keywords": [
     "sticky",
