@@ -1,3 +1,5 @@
+import 'classlist.js'; // Needed for IE9 and below
+import 'babel-polyfill'; // Needed for IE11 and below
 import Stucky from './stucky';
 
 document.addEventListener('DOMContentLoaded', () => {
