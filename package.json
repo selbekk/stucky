@@ -1,6 +1,6 @@
 {
   "name": "stucky",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A sticky table header utility that just works",
   "main": "dist/stucky.js",
   "dependencies": {
