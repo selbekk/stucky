@@ -38,8 +38,12 @@ const $tables = [...document.querySelectorAll('table')];
 
 // Set up options
 const opts = {
-    topMargin: 0,   // If you have a fixed header, this px value will let you account for it
-    allowance: 0    // Remove the header this px value before the end of the table
+    // If you have a fixed header, this px value will let you account for it
+    topMargin: 0,
+    // Remove the header this px value before the end of the table
+    allowance: 0,
+    // Space separated class names to apply to the table wrapper
+    wrapperClasses: ''
 };
 
 // Initiate them

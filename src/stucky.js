@@ -5,7 +5,8 @@ export default class TableStickyHeader {
     constructor($el, opts) {
         const defaults = {
             offsetHeight: 0,    // Offset height of "top of screen"
-            allowance: 100       // Allowance at the bottom of the table
+            allowance: 100,     // Allowance at the bottom of the table
+            wrapperClasses: ''  // Classes to add to the wrapper
         };
 
         this.$el = $el;
@@ -47,6 +48,10 @@ export default class TableStickyHeader {
     _initWrap() {
         const $wrap = document.createElement('div');
         $wrap.classList.add('sticky-wrap');
+        this.opts.wrapperClasses
+            .split(' ')
+            .forEach(className => $wrap.classList.add(className));
+            
         this.$el.parentNode.insertBefore($wrap, this.$el);
         $wrap.appendChild(this.$el);
     }
