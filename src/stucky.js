@@ -211,3 +211,6 @@ export default Stucky;
 if(module.exports) {
     exports.default = Stucky;
 }
+else {
+    window.Stucky = Stucky;
+}
