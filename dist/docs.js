@@ -6972,11 +6972,404 @@ module.exports.polyfill = function() {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"performance-now":293}],296:[function(require,module,exports){
+(function(self) {
+  'use strict';
+
+  if (self.fetch) {
+    return
+  }
+
+  function normalizeName(name) {
+    if (typeof name !== 'string') {
+      name = String(name)
+    }
+    if (/[^a-z0-9\-#$%&'*+.\^_`|~]/i.test(name)) {
+      throw new TypeError('Invalid character in header field name')
+    }
+    return name.toLowerCase()
+  }
+
+  function normalizeValue(value) {
+    if (typeof value !== 'string') {
+      value = String(value)
+    }
+    return value
+  }
+
+  function Headers(headers) {
+    this.map = {}
+
+    if (headers instanceof Headers) {
+      headers.forEach(function(value, name) {
+        this.append(name, value)
+      }, this)
+
+    } else if (headers) {
+      Object.getOwnPropertyNames(headers).forEach(function(name) {
+        this.append(name, headers[name])
+      }, this)
+    }
+  }
+
+  Headers.prototype.append = function(name, value) {
+    name = normalizeName(name)
+    value = normalizeValue(value)
+    var list = this.map[name]
+    if (!list) {
+      list = []
+      this.map[name] = list
+    }
+    list.push(value)
+  }
+
+  Headers.prototype['delete'] = function(name) {
+    delete this.map[normalizeName(name)]
+  }
+
+  Headers.prototype.get = function(name) {
+    var values = this.map[normalizeName(name)]
+    return values ? values[0] : null
+  }
+
+  Headers.prototype.getAll = function(name) {
+    return this.map[normalizeName(name)] || []
+  }
+
+  Headers.prototype.has = function(name) {
+    return this.map.hasOwnProperty(normalizeName(name))
+  }
+
+  Headers.prototype.set = function(name, value) {
+    this.map[normalizeName(name)] = [normalizeValue(value)]
+  }
+
+  Headers.prototype.forEach = function(callback, thisArg) {
+    Object.getOwnPropertyNames(this.map).forEach(function(name) {
+      this.map[name].forEach(function(value) {
+        callback.call(thisArg, value, name, this)
+      }, this)
+    }, this)
+  }
+
+  function consumed(body) {
+    if (body.bodyUsed) {
+      return Promise.reject(new TypeError('Already read'))
+    }
+    body.bodyUsed = true
+  }
+
+  function fileReaderReady(reader) {
+    return new Promise(function(resolve, reject) {
+      reader.onload = function() {
+        resolve(reader.result)
+      }
+      reader.onerror = function() {
+        reject(reader.error)
+      }
+    })
+  }
+
+  function readBlobAsArrayBuffer(blob) {
+    var reader = new FileReader()
+    reader.readAsArrayBuffer(blob)
+    return fileReaderReady(reader)
+  }
+
+  function readBlobAsText(blob) {
+    var reader = new FileReader()
+    reader.readAsText(blob)
+    return fileReaderReady(reader)
+  }
+
+  var support = {
+    blob: 'FileReader' in self && 'Blob' in self && (function() {
+      try {
+        new Blob();
+        return true
+      } catch(e) {
+        return false
+      }
+    })(),
+    formData: 'FormData' in self,
+    arrayBuffer: 'ArrayBuffer' in self
+  }
+
+  function Body() {
+    this.bodyUsed = false
+
+
+    this._initBody = function(body) {
+      this._bodyInit = body
+      if (typeof body === 'string') {
+        this._bodyText = body
+      } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
+        this._bodyBlob = body
+      } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
+        this._bodyFormData = body
+      } else if (!body) {
+        this._bodyText = ''
+      } else if (support.arrayBuffer && ArrayBuffer.prototype.isPrototypeOf(body)) {
+        // Only support ArrayBuffers for POST method.
+        // Receiving ArrayBuffers happens via Blobs, instead.
+      } else {
+        throw new Error('unsupported BodyInit type')
+      }
+
+      if (!this.headers.get('content-type')) {
+        if (typeof body === 'string') {
+          this.headers.set('content-type', 'text/plain;charset=UTF-8')
+        } else if (this._bodyBlob && this._bodyBlob.type) {
+          this.headers.set('content-type', this._bodyBlob.type)
+        }
+      }
+    }
+
+    if (support.blob) {
+      this.blob = function() {
+        var rejected = consumed(this)
+        if (rejected) {
+          return rejected
+        }
+
+        if (this._bodyBlob) {
+          return Promise.resolve(this._bodyBlob)
+        } else if (this._bodyFormData) {
+          throw new Error('could not read FormData body as blob')
+        } else {
+          return Promise.resolve(new Blob([this._bodyText]))
+        }
+      }
+
+      this.arrayBuffer = function() {
+        return this.blob().then(readBlobAsArrayBuffer)
+      }
+
+      this.text = function() {
+        var rejected = consumed(this)
+        if (rejected) {
+          return rejected
+        }
+
+        if (this._bodyBlob) {
+          return readBlobAsText(this._bodyBlob)
+        } else if (this._bodyFormData) {
+          throw new Error('could not read FormData body as text')
+        } else {
+          return Promise.resolve(this._bodyText)
+        }
+      }
+    } else {
+      this.text = function() {
+        var rejected = consumed(this)
+        return rejected ? rejected : Promise.resolve(this._bodyText)
+      }
+    }
+
+    if (support.formData) {
+      this.formData = function() {
+        return this.text().then(decode)
+      }
+    }
+
+    this.json = function() {
+      return this.text().then(JSON.parse)
+    }
+
+    return this
+  }
+
+  // HTTP methods whose capitalization should be normalized
+  var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT']
+
+  function normalizeMethod(method) {
+    var upcased = method.toUpperCase()
+    return (methods.indexOf(upcased) > -1) ? upcased : method
+  }
+
+  function Request(input, options) {
+    options = options || {}
+    var body = options.body
+    if (Request.prototype.isPrototypeOf(input)) {
+      if (input.bodyUsed) {
+        throw new TypeError('Already read')
+      }
+      this.url = input.url
+      this.credentials = input.credentials
+      if (!options.headers) {
+        this.headers = new Headers(input.headers)
+      }
+      this.method = input.method
+      this.mode = input.mode
+      if (!body) {
+        body = input._bodyInit
+        input.bodyUsed = true
+      }
+    } else {
+      this.url = input
+    }
+
+    this.credentials = options.credentials || this.credentials || 'omit'
+    if (options.headers || !this.headers) {
+      this.headers = new Headers(options.headers)
+    }
+    this.method = normalizeMethod(options.method || this.method || 'GET')
+    this.mode = options.mode || this.mode || null
+    this.referrer = null
+
+    if ((this.method === 'GET' || this.method === 'HEAD') && body) {
+      throw new TypeError('Body not allowed for GET or HEAD requests')
+    }
+    this._initBody(body)
+  }
+
+  Request.prototype.clone = function() {
+    return new Request(this)
+  }
+
+  function decode(body) {
+    var form = new FormData()
+    body.trim().split('&').forEach(function(bytes) {
+      if (bytes) {
+        var split = bytes.split('=')
+        var name = split.shift().replace(/\+/g, ' ')
+        var value = split.join('=').replace(/\+/g, ' ')
+        form.append(decodeURIComponent(name), decodeURIComponent(value))
+      }
+    })
+    return form
+  }
+
+  function headers(xhr) {
+    var head = new Headers()
+    var pairs = xhr.getAllResponseHeaders().trim().split('\n')
+    pairs.forEach(function(header) {
+      var split = header.trim().split(':')
+      var key = split.shift().trim()
+      var value = split.join(':').trim()
+      head.append(key, value)
+    })
+    return head
+  }
+
+  Body.call(Request.prototype)
+
+  function Response(bodyInit, options) {
+    if (!options) {
+      options = {}
+    }
+
+    this.type = 'default'
+    this.status = options.status
+    this.ok = this.status >= 200 && this.status < 300
+    this.statusText = options.statusText
+    this.headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers)
+    this.url = options.url || ''
+    this._initBody(bodyInit)
+  }
+
+  Body.call(Response.prototype)
+
+  Response.prototype.clone = function() {
+    return new Response(this._bodyInit, {
+      status: this.status,
+      statusText: this.statusText,
+      headers: new Headers(this.headers),
+      url: this.url
+    })
+  }
+
+  Response.error = function() {
+    var response = new Response(null, {status: 0, statusText: ''})
+    response.type = 'error'
+    return response
+  }
+
+  var redirectStatuses = [301, 302, 303, 307, 308]
+
+  Response.redirect = function(url, status) {
+    if (redirectStatuses.indexOf(status) === -1) {
+      throw new RangeError('Invalid status code')
+    }
+
+    return new Response(null, {status: status, headers: {location: url}})
+  }
+
+  self.Headers = Headers;
+  self.Request = Request;
+  self.Response = Response;
+
+  self.fetch = function(input, init) {
+    return new Promise(function(resolve, reject) {
+      var request
+      if (Request.prototype.isPrototypeOf(input) && !init) {
+        request = input
+      } else {
+        request = new Request(input, init)
+      }
+
+      var xhr = new XMLHttpRequest()
+
+      function responseURL() {
+        if ('responseURL' in xhr) {
+          return xhr.responseURL
+        }
+
+        // Avoid security warnings on getResponseHeader when not allowed by CORS
+        if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
+          return xhr.getResponseHeader('X-Request-URL')
+        }
+
+        return;
+      }
+
+      xhr.onload = function() {
+        var status = (xhr.status === 1223) ? 204 : xhr.status
+        if (status < 100 || status > 599) {
+          reject(new TypeError('Network request failed'))
+          return
+        }
+        var options = {
+          status: status,
+          statusText: xhr.statusText,
+          headers: headers(xhr),
+          url: responseURL()
+        }
+        var body = 'response' in xhr ? xhr.response : xhr.responseText;
+        resolve(new Response(body, options))
+      }
+
+      xhr.onerror = function() {
+        reject(new TypeError('Network request failed'))
+      }
+
+      xhr.open(request.method, request.url, true)
+
+      if (request.credentials === 'include') {
+        xhr.withCredentials = true
+      }
+
+      if ('responseType' in xhr && support.blob) {
+        xhr.responseType = 'blob'
+      }
+
+      request.headers.forEach(function(value, name) {
+        xhr.setRequestHeader(name, value)
+      })
+
+      xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit)
+    })
+  }
+  self.fetch.polyfill = true
+})(typeof self !== 'undefined' ? self : this);
+
+},{}],297:[function(require,module,exports){
 'use strict';
 
 require('classlist.js');
 
 require('babel-polyfill');
+
+require('whatwg-fetch');
 
 var _stucky = require('./stucky');
 
@@ -6984,28 +7377,86 @@ var _stucky2 = _interopRequireDefault(_stucky);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } // Needed for IE9 and below
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } } // Polyfills
+// Needed for IE9 and below
 // Needed for IE11 and below
 
+function getRandomSelection(arr, count) {
+    var result = [];
+    for (var i = 0; i < count; i++) {
+        result.push(arr[Math.floor(Math.random() * arr.length)]);
+    }
+    return result;
+}
+
+function populateTestData() {
+    if (localStorage.getItem('testData')) {
+        return renderTableRows();
+    }
+
+    return fetch('https://randomuser.me/api/?results=1000').then(function (res) {
+        return res.json();
+    }).then(function (json) {
+        return localStorage.setItem('testData', JSON.stringify(json.results));
+    }).then(renderTableRows);
+}
+
+function renderTableRows() {
+    var testData = JSON.parse(localStorage.getItem('testData')).map(function (person) {
+        return {
+            name: person.name.first + ' ' + person.name.last,
+            address: person.location.street + ', ' + person.location.postcode + ' ' + person.location.city,
+            email: '' + person.email,
+            phone: '' + person.phone,
+            username: '' + person.login.username,
+            gender: '' + person.gender,
+            nationality: '' + person.nat
+        };
+    });
+
+    var $tables = [].concat(_toConsumableArray(document.querySelectorAll('table')));
+
+    $tables.forEach(function ($table) {
+        var isVertical = $table.getAttribute('data-vertical') === 'true';
+
+        var rowCount = parseInt($table.getAttribute('data-rows'));
+        var colCount = [].concat(_toConsumableArray($table.querySelectorAll('thead th'))).length || parseInt($table.getAttribute('data-columns')) || 3;
+
+        var $tbody = $table.querySelector('tbody');
+
+        for (var row = 0; row < rowCount; row++) {
+            var tr = document.createElement('tr');
+            var data = getRandomSelection(testData, rowCount);
+            var keys = Object.keys(data[row]);
+
+            for (var col = 0; col < colCount; col++) {
+                var cell = document.createElement(isVertical && col === 0 ? 'th' : 'td');
+                cell.innerHTML = data[row][keys[col]];
+                tr.appendChild(cell);
+            }
+            $tbody.appendChild(tr);
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Import the scripts
+    // Populate some test data
+    populateTestData();
 
     // Select your tables
     var $tables = [].concat(_toConsumableArray(document.querySelectorAll('table')));
 
     // Set up options
-    var opts = {
-        // These are explained further down
-    };
+    var opts = {};
 
     // Initiate them
     $tables.forEach(function ($table) {
-        return new _stucky2.default($table, opts);
+
+        new _stucky2.default($table, opts);
     });
 });
 
-},{"./stucky":297,"babel-polyfill":1,"classlist.js":291}],297:[function(require,module,exports){
+},{"./stucky":298,"babel-polyfill":1,"classlist.js":291,"whatwg-fetch":296}],298:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7039,28 +7490,28 @@ var Stucky = function () {
         };
 
         this.$el = $el;
-        this.opts = (0, _objectAssign2.default)({}, defaults, opts);
         this.$head = this.$el.querySelector('thead');
         this.$bodyHeaders = [].concat(_toConsumableArray(this.$el.querySelectorAll('tbody th')));
+        this.$caption = this.$el.querySelector('caption');
 
         if (!this.$head && !this.$bodyHeaders.length) {
             return; // Nothing to stick?
         }
 
-        // Mark the table as sticky enabled
+        this.opts = (0, _objectAssign2.default)({}, defaults, opts);
+
+        // Wrap the table in an overflowing div
         this._initWrap();
 
         if (this.$head) {
             this.$stickyHead = this._initStickyHead();
             this.$stickyIntersectTable = this._initStickyIntersect();
-            this._calculateStickyHeadDimensions();
             var id = null;
             window.addEventListener('scroll', this._throttle(this._repositionStickyHead.bind(this), id));
             this._repositionStickyHead();
         }
         if (this.$bodyHeaders.length) {
             this.$stickyBodyTable = this._initStickyBody();
-            this._calculateStickyBodyDimensions();
             var _id = null;
             this.$el.parentNode.addEventListener('scroll', this._throttle(this._repositionStickyCols.bind(this), _id));
             this._repositionStickyCols();
@@ -7121,7 +7572,7 @@ var Stucky = function () {
             var $clonedTable = this.$el.cloneNode(true);
 
             // Delete ignorable content
-            [].concat(_toConsumableArray($clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody td'))).forEach(function ($deletable) {
+            [].concat(_toConsumableArray($clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody td, caption'))).forEach(function ($deletable) {
                 return $deletable.parentNode.removeChild($deletable);
             });
 
@@ -7147,7 +7598,7 @@ var Stucky = function () {
             // Clone the table
             var $clonedTable = this.$el.cloneNode(true);
 
-            [].concat(_toConsumableArray($clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody'))).forEach(function ($deletable) {
+            [].concat(_toConsumableArray($clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody, caption'))).forEach(function ($deletable) {
                 return $deletable.parentNode.removeChild($deletable);
             });
 
@@ -7201,21 +7652,25 @@ var Stucky = function () {
     }, {
         key: '_repositionStickyHead',
         value: function _repositionStickyHead() {
+            this._calculateStickyHeadDimensions();
             var elRect = this.$el.getBoundingClientRect();
+            var captionHeight = this.$caption ? this.$caption.offsetHeight : 0;
 
-            if (elRect.top < this.opts.offsetHeight && elRect.bottom > this.opts.allowance) {
+            if (elRect.top + captionHeight < this.opts.offsetHeight && elRect.bottom > this.opts.allowance) {
                 this.$stickyHead.style.top = -elRect.top + this.opts.offsetHeight + 'px';
                 this.$stickyHead.classList.add('is-active');
 
                 if (this.$stickyIntersectTable) {
                     this.$stickyIntersectTable.style.top = -elRect.top + this.opts.offsetHeight + 'px';
                     this.$stickyIntersectTable.classList.add('is-active');
+                    this.$stickyIntersectTable.style.transform = null;
                 }
             } else {
                 this.$stickyHead.style.top = null;
                 this.$stickyHead.classList.remove('is-active');
 
                 if (this.$stickyIntersectTable) {
+                    this.$stickyIntersectTable.style.transform = 'translateY(' + captionHeight + 'px)';
                     this.$stickyIntersectTable.style.top = null;
                     this.$stickyIntersectTable.classList.remove('is-active');
                 }
@@ -7224,11 +7679,12 @@ var Stucky = function () {
     }, {
         key: '_repositionStickyCols',
         value: function _repositionStickyCols() {
+            this._calculateStickyBodyDimensions();
             var scrollLeft = this.$el.parentNode.scrollLeft;
+            var captionHeight = this.$caption ? this.$caption.offsetHeight : 0;
 
             if (scrollLeft > 0) {
-
-                //this.$stickyBodyTable.style.transform = `translateX(${scrollLeft}px)`;
+                this.$stickyBodyTable.style.transform = 'translateY(' + captionHeight + 'px)';
                 this.$stickyBodyTable.style.left = scrollLeft + 'px';
                 this.$stickyBodyTable.classList.add('is-active');
 
@@ -7237,6 +7693,8 @@ var Stucky = function () {
                     this.$stickyIntersectTable.classList.add('is-active');
                 }
             } else {
+                this.$stickyBodyTable.style.top = null;
+                this.$stickyBodyTable.style.transform = null;
                 this.$stickyBodyTable.style.left = null;
                 this.$stickyBodyTable.classList.remove('is-active');
 
@@ -7259,4 +7717,4 @@ if (module.exports) {
     window.Stucky = Stucky;
 }
 
-},{"object-assign":292,"raf":295}]},{},[296]);
+},{"object-assign":292,"raf":295}]},{},[297]);
