@@ -273,7 +273,8 @@ var TableStickyHeader = function () {
 
         var defaults = {
             offsetHeight: 0, // Offset height of "top of screen"
-            allowance: 100 // Allowance at the bottom of the table
+            allowance: 100, // Allowance at the bottom of the table
+            wrapperClasses: '' // Classes to add to the wrapper
         };
 
         this.$el = $el;
@@ -318,6 +319,10 @@ var TableStickyHeader = function () {
         value: function _initWrap() {
             var $wrap = document.createElement('div');
             $wrap.classList.add('sticky-wrap');
+            this.opts.wrapperClasses.split(' ').forEach(function (className) {
+                return $wrap.classList.add(className);
+            });
+
             this.$el.parentNode.insertBefore($wrap, this.$el);
             $wrap.appendChild(this.$el);
         }
