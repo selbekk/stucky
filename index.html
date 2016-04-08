@@ -59,6 +59,35 @@ new Stucky($table);</code></pre>
 
         <div class="content">
             <div class="container">
+                <h2>Usage</h2>
+                <p>
+                    Using Stucky is as simple as we showed above, but you can
+                    also specify a few options. This is done at initialization
+                    time. Here's an annotated example:
+                </p>
+
+                <pre><code>import Stucky from 'stucky';
+
+// Grab the table(s) you want to have sticky headers.
+const $tables = [...document.querySelectorAll('table')];
+
+// Shared options
+const opts = {
+    // If you have a fixed header, this px value will let you account for it
+    topMargin: 0,
+    // Remove the header this px value before the end of the table
+    allowance: 100,
+    // Space separated class names to apply to the table wrapper
+    wrapperClasses: ''
+};
+
+// Initialize each of your tables, and you're done!
+$tables.forEach($table => new Stucky($table));</code></pre>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="container">
                 <h2>Here's a few examples</h2>
                 <p>Sample data courtesy of <a href="https://randomuser.me/">randomuser.me</a>.</p>
 
@@ -110,35 +139,6 @@ new Stucky($table);</code></pre>
                     </thead>
                     <tbody></tbody>
                 </table>
-            </div>
-        </div>
-
-        <div class="content">
-            <div class="container">
-                <h2>Usage</h2>
-                <p>
-                    Using Stucky is as simple as we showed above, but you can
-                    also specify a few options. This is done at initialization
-                    time. Here's an annotated example:
-                </p>
-
-                <pre><code>import Stucky from 'stucky';
-
-// Grab the table(s) you want to have sticky headers.
-const $tables = [...document.querySelectorAll('table')];
-
-// Shared options
-const opts = {
-    // If you have a fixed header, this px value will let you account for it
-    topMargin: 0,
-    // Remove the header this px value before the end of the table
-    allowance: 100,
-    // Space separated class names to apply to the table wrapper
-    wrapperClasses: ''
-};
-
-// Initialize each of your tables, and you're done!
-$tables.forEach($table => new Stucky($table));</code></pre>
             </div>
         </div>
         <script src="dist/docs.js"></script>
