@@ -1,6 +1,6 @@
 {
   "name": "stucky",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A sticky table header utility that just works",
   "main": "dist/stucky.js",
   "dependencies": {
@@ -20,13 +20,17 @@
     "build": "browserify src/stucky.js -t babelify -o dist/stucky.js",
     "postbuild": "uglifyjs dist/stucky.js > dist/stucky.min.js && cp src/stucky.css dist/stucky.css",
     "prestart": "npm run build && browserify src/demo.js -t babelify -o dist/demo.js",
-    "start": "js-dev-server"
+    "start": "js-dev-server",
+    "version": "npm run build && git add .",
+    "postversion": "git push && git push --tags"
   },
   "keywords": [
     "sticky",
     "table",
     "header",
-    "vanilla"
+    "vanilla",
+    "browser",
+    "pyah"
   ],
   "author": "Kristofer Selbekk <kristofer@selbekk.io>",
   "license": "ISC"
