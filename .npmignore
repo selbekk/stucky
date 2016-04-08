@@ -1,4 +1,6 @@
 # Ignore demo stuff
 index.html
-src/demo.js
+src/docs.js
+src/docs.css
 dist/demo.js
+dist/demo.css

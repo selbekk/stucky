@@ -3,6 +3,3 @@ node_modules
 
 # Logs
 *.log
-
-# Compiled demo file
-dist/demo.js

@@ -23,7 +23,7 @@
     "build:css": "cp src/*.css dist/",
     "prebuild": "rm -rf dist && mkdir dist",
     "build": "npm run build:js && npm run build:css",
-    "prestart": "npm run build && browserify src/demo.js -t babelify -o dist/docs.js",
+    "prestart": "npm run build && browserify src/docs.js -t babelify -o dist/docs.js",
     "start": "js-dev-server",
     "version": "npm run build && git add .",
     "postversion": "git push && git push --tags"
