@@ -18,10 +18,12 @@
     "uglify-js": "^2.6.2"
   },
   "scripts": {
+    "build:js": "babel src/stucky.js -o dist/stucky.js",
+    "postbuild:js": "browserify dist/stucky.js | uglifyjs > dist/stucky.min.js",
+    "build:css": "cp src/*.css dist/",
     "prebuild": "rm -rf dist && mkdir dist",
-    "build": "babel src/stucky.js -o dist/stucky.js",
-    "postbuild": "browserify dist/stucky.js | uglifyjs > dist/stucky.min.js && cp src/stucky.css dist/stucky.css",
-    "prestart": "npm run build && browserify src/demo.js -t babelify -o dist/demo.js",
+    "build": "npm run build:js && npm run build:css",
+    "prestart": "npm run build && browserify src/demo.js -t babelify -o dist/docs.js",
     "start": "js-dev-server",
     "version": "npm run build && git add .",
     "postversion": "git push && git push --tags"
