@@ -137,6 +137,10 @@ tbody th {
     border-bottom: 1px solid #16a085;
 }
 
+tr {
+    background-color: #fff;
+}
+
 tr:nth-of-type(2n) {
-    background-color: #f2f2f2;
+    background-color: #eee;
 }
