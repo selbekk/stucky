@@ -5,6 +5,8 @@ of features, but who needs them anyways.
 
 **Oh, and a nice bonus is that it doesn't require jQuery!**
 
+[selbekk.github.io/stucky](https://selbekk.github.io/stucky)
+
 ## Features
 
 Once initialized, your tables should hopefully get awesome sticky headers.
