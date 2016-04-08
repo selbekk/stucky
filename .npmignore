@@ -1,0 +1,4 @@
+# Ignore demo stuff
+index.html
+src/demo.js
+dist/demo.js
