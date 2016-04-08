@@ -16,7 +16,7 @@
     opacity: 0;
     position: absolute;
     top: 0;
-    transition: .1s ease-out;
+    transition: top .1s ease-out, left .1s ease-out, opacity .1s ease-out;
     visibility: hidden;
     width: 100%;
 }

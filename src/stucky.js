@@ -10,28 +10,29 @@ class Stucky {
         };
 
         this.$el = $el;
-        this.opts = assign({}, defaults, opts);
         this.$head = this.$el.querySelector('thead');
         this.$bodyHeaders = [...this.$el.querySelectorAll('tbody th')];
+        this.$caption = this.$el.querySelector('caption');
 
         if(!this.$head && !this.$bodyHeaders.length) {
             return; // Nothing to stick?
         }
 
-        // Mark the table as sticky enabled
+        this.opts = assign({}, defaults, opts);
+
+        // Wrap the table in an overflowing div
         this._initWrap();
+
 
         if(this.$head) {
             this.$stickyHead = this._initStickyHead();
             this.$stickyIntersectTable = this._initStickyIntersect();
-            this._calculateStickyHeadDimensions();
             let id = null;
             window.addEventListener('scroll', this._throttle(this._repositionStickyHead.bind(this), id));
             this._repositionStickyHead();
         }
         if(this.$bodyHeaders.length) {
             this.$stickyBodyTable = this._initStickyBody();
-            this._calculateStickyBodyDimensions();
             let id = null;
             this.$el.parentNode.addEventListener('scroll', this._throttle(this._repositionStickyCols.bind(this), id));
             this._repositionStickyCols();
@@ -86,7 +87,7 @@ class Stucky {
         const $clonedTable = this.$el.cloneNode(true);
 
         // Delete ignorable content
-        [...$clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody td')]
+        [...$clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody td, caption')]
             .forEach($deletable => $deletable.parentNode.removeChild($deletable));
 
 
@@ -110,7 +111,7 @@ class Stucky {
         // Clone the table
         const $clonedTable = this.$el.cloneNode(true);
 
-        [...$clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody')]
+        [...$clonedTable.querySelectorAll('thead th:not(:first-of-type), tbody, caption')]
             .forEach($deletable => $deletable.parentNode.removeChild($deletable));
 
         // Create a new table for adding intersect
@@ -158,23 +159,26 @@ class Stucky {
     }
 
     _repositionStickyHead() {
+        this._calculateStickyHeadDimensions();
         const elRect = this.$el.getBoundingClientRect();
+        const captionHeight = this.$caption ? this.$caption.offsetHeight : 0;
 
-        if(elRect.top < this.opts.offsetHeight && elRect.bottom > this.opts.allowance) {
+        if(elRect.top + captionHeight < this.opts.offsetHeight && elRect.bottom > this.opts.allowance) {
             this.$stickyHead.style.top = `${-elRect.top + this.opts.offsetHeight}px`;
             this.$stickyHead.classList.add('is-active');
 
             if(this.$stickyIntersectTable) {
                 this.$stickyIntersectTable.style.top = `${-elRect.top + this.opts.offsetHeight}px`;
                 this.$stickyIntersectTable.classList.add('is-active');
+                this.$stickyIntersectTable.style.transform = null;
             }
-
         }
         else {
             this.$stickyHead.style.top = null;
             this.$stickyHead.classList.remove('is-active');
 
             if(this.$stickyIntersectTable) {
+                this.$stickyIntersectTable.style.transform = `translateY(${captionHeight}px)`;
                 this.$stickyIntersectTable.style.top = null;
                 this.$stickyIntersectTable.classList.remove('is-active');
             }
@@ -182,11 +186,14 @@ class Stucky {
     }
 
     _repositionStickyCols() {
+        this._calculateStickyBodyDimensions();
         const scrollLeft = this.$el.parentNode.scrollLeft;
+        const captionHeight = this.$caption ? this.$caption.offsetHeight : 0;
+
+
 
         if(scrollLeft > 0) {
-
-            //this.$stickyBodyTable.style.transform = `translateX(${scrollLeft}px)`;
+            this.$stickyBodyTable.style.transform = `translateY(${captionHeight}px)`;
             this.$stickyBodyTable.style.left = `${scrollLeft}px`;
             this.$stickyBodyTable.classList.add('is-active');
 
@@ -196,6 +203,8 @@ class Stucky {
             }
         }
         else {
+            this.$stickyBodyTable.style.top = null;
+            this.$stickyBodyTable.style.transform = null
             this.$stickyBodyTable.style.left = null;
             this.$stickyBodyTable.classList.remove('is-active');
 
