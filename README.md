@@ -14,6 +14,14 @@ Once initialized, your tables should hopefully get awesome sticky headers.
 header row.
 - If you have both - well, god darn it, you'll get all the stickies.
 
+### Browser compatibility
+
+Tested and working in latest evergreen browsers, on both desktop and phones, as
+well as IE 9 or newer. Note that in order for IE9 to work, you need a
+[`classList`](https://github.com/eligrey/classList.js) polyfill. The `demo.js`
+also uses [`babel-polyfill`](https://github.com/babel/babel/tree/master/packages/babel-polyfill),
+which adds some ES5 methods.
+
 ## Installation
 
 The package is available via NPM:

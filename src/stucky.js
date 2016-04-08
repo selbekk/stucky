@@ -186,20 +186,21 @@ class Stucky {
 
         if(scrollLeft > 0) {
 
-            this.$stickyBodyTable.style.transform = `translateX(${scrollLeft}px)`;
+            //this.$stickyBodyTable.style.transform = `translateX(${scrollLeft}px)`;
+            this.$stickyBodyTable.style.left = `${scrollLeft}px`;
             this.$stickyBodyTable.classList.add('is-active');
 
             if(this.$stickyIntersectTable) {
-                this.$stickyIntersectTable.style.transform = `translateX(${scrollLeft}px)`;
+                this.$stickyIntersectTable.style.left = `${scrollLeft}px`;
                 this.$stickyIntersectTable.classList.add('is-active');
             }
         }
         else {
-            this.$stickyBodyTable.style.transform = null;
+            this.$stickyBodyTable.style.left = null;
             this.$stickyBodyTable.classList.remove('is-active');
 
             if(this.$stickyIntersectTable) {
-                this.$stickyIntersectTable.style.transform = null;
+                this.$stickyIntersectTable.style.left = null;
                 this.$stickyIntersectTable.classList.remove('is-active');
             }
         }
