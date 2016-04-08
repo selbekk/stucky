@@ -1,0 +1,44 @@
+.sticky-wrap {
+    overflow-x: auto;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sticky-wrap * {
+    box-sizing: inherit;
+}
+
+.sticky-head,
+.sticky-col,
+.sticky-intersect {
+    left: 0;
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    transition: .1s ease-out;
+    visibility: hidden;
+    width: 100%;
+}
+
+.sticky-head.is-active,
+.sticky-col.is-active,
+.sticky-intersect.is-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sticky-head {
+    z-index: 100;
+    width: 100%;
+}
+
+.sticky-col {
+    z-index: 50;
+    width: auto;
+}
+
+.sticky-intersect {
+    z-index: 150;
+    width: auto;
+}
