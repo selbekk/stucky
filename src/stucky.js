@@ -1,7 +1,7 @@
 import raf from 'raf';
 import assign from 'object-assign';
 
-export default class TableStickyHeader {
+class Stucky {
     constructor($el, opts) {
         const defaults = {
             offsetHeight: 0,    // Offset height of "top of screen"
@@ -50,8 +50,9 @@ export default class TableStickyHeader {
         $wrap.classList.add('sticky-wrap');
         this.opts.wrapperClasses
             .split(' ')
+            .filter(s => s && s.length)
             .forEach(className => $wrap.classList.add(className));
-            
+
         this.$el.parentNode.insertBefore($wrap, this.$el);
         $wrap.appendChild(this.$el);
     }
@@ -204,4 +205,9 @@ export default class TableStickyHeader {
         }
     }
 
+}
+
+export default Stucky;
+if(module.exports) {
+    exports.default = Stucky;
 }
