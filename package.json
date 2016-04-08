@@ -24,6 +24,10 @@
     "version": "npm run build && git add .",
     "postversion": "git push && git push --tags"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/selbekk/stucky"
+  },
   "keywords": [
     "sticky",
     "table",
