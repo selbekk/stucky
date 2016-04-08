@@ -54,7 +54,7 @@ to use it directly. Just make sure they are included somehow!
 
 ## Open open source
 
-We :heart: pull requests! If you want to help out, feel free to create an issue,
+**We :heart: pull requests!** If you want to help out, feel free to create an issue,
 or even better - create a pull request to go with it. If I like your work, I'll
 make sure to make you a contributor :)
 
