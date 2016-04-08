@@ -1,11 +1,17 @@
 import raf from 'raf';
+import assign from 'object-assign';
 
 export default class TableStickyHeader {
     constructor($el, opts) {
+        const defaults = {
+            offsetHeight: 0,    // Offset height of "top of screen"
+            allowance: 100       // Allowance at the bottom of the table
+        };
+
         this.$el = $el;
+        this.opts = assign({}, defaults, opts);
         this.$head = this.$el.querySelector('thead');
         this.$bodyHeaders = [...this.$el.querySelectorAll('tbody th')];
-        this.siteHeaderHeight = document.querySelector('.site-header').offsetHeight;
 
         if(!this.$head && !this.$bodyHeaders.length) {
             return; // Nothing to stick?
@@ -16,6 +22,7 @@ export default class TableStickyHeader {
 
         if(this.$head) {
             this.$stickyHead = this._initStickyHead();
+            this.$stickyIntersectTable = this._initStickyIntersect();
             this._calculateStickyHeadDimensions();
             let id = null;
             window.addEventListener('scroll', this._throttle(this._repositionStickyHead.bind(this), id));
@@ -23,7 +30,6 @@ export default class TableStickyHeader {
         }
         if(this.$bodyHeaders.length) {
             this.$stickyBodyTable = this._initStickyBody();
-            this.$stickyIntersectTable = this._initStickyIntersect();
             this._calculateStickyBodyDimensions();
             let id = null;
             this.$el.parentNode.addEventListener('scroll', this._throttle(this._repositionStickyCols.bind(this), id));
@@ -39,7 +45,10 @@ export default class TableStickyHeader {
     }
 
     _initWrap() {
-        this.$el.parentNode.classList.add('sticky-wrap');
+        const $wrap = document.createElement('div');
+        $wrap.classList.add('sticky-wrap');
+        this.$el.parentNode.insertBefore($wrap, this.$el);
+        $wrap.appendChild(this.$el);
     }
 
     _initStickyHead() {
@@ -119,6 +128,12 @@ export default class TableStickyHeader {
 
         // Set width of fake table to equal the real table
         this.$stickyHead.style.width = `${this.$el.getBoundingClientRect().width}px`;
+
+        const $originalIntersect = this.$el.querySelector('thead th');
+        if($originalIntersect) {
+            const $fakeIntersect = this.$stickyIntersectTable.querySelector('thead th');
+            $fakeIntersect.style.width = `${$originalIntersect.getBoundingClientRect().width}px`;
+        }
     }
 
     _calculateStickyBodyDimensions() {
@@ -130,19 +145,21 @@ export default class TableStickyHeader {
         });
 
         const $originalIntersect = this.$el.querySelector('thead th');
-        const $fakeIntersect = this.$stickyIntersectTable.querySelector('thead th');
-        $fakeIntersect.style.width = `${$originalIntersect.getBoundingClientRect().width}px`;
+        if($originalIntersect) {
+            const $fakeIntersect = this.$stickyIntersectTable.querySelector('thead th');
+            $fakeIntersect.style.width = `${$originalIntersect.getBoundingClientRect().width}px`;
+        }
     }
 
     _repositionStickyHead() {
         const elRect = this.$el.getBoundingClientRect();
 
-        if(elRect.top < this.siteHeaderHeight && elRect.bottom > 0) {
-            this.$stickyHead.style.top = `${-elRect.top + this.siteHeaderHeight}px`;
+        if(elRect.top < this.opts.offsetHeight && elRect.bottom > this.opts.allowance) {
+            this.$stickyHead.style.top = `${-elRect.top + this.opts.offsetHeight}px`;
             this.$stickyHead.classList.add('is-active');
 
             if(this.$stickyIntersectTable) {
-                this.$stickyIntersectTable.style.top = `${-elRect.top + this.siteHeaderHeight}px`;
+                this.$stickyIntersectTable.style.top = `${-elRect.top + this.opts.offsetHeight}px`;
                 this.$stickyIntersectTable.classList.add('is-active');
             }
 
@@ -166,15 +183,19 @@ export default class TableStickyHeader {
             this.$stickyBodyTable.style.transform = `translateX(${scrollLeft}px)`;
             this.$stickyBodyTable.classList.add('is-active');
 
-            this.$stickyIntersectTable.style.transform = `translateX(${scrollLeft}px)`;
-            this.$stickyIntersectTable.classList.add('is-active');
+            if(this.$stickyIntersectTable) {
+                this.$stickyIntersectTable.style.transform = `translateX(${scrollLeft}px)`;
+                this.$stickyIntersectTable.classList.add('is-active');
+            }
         }
         else {
             this.$stickyBodyTable.style.transform = null;
             this.$stickyBodyTable.classList.remove('is-active');
 
-            this.$stickyIntersectTable.style.transform = null;
-            this.$stickyIntersectTable.classList.remove('is-active');
+            if(this.$stickyIntersectTable) {
+                this.$stickyIntersectTable.style.transform = null;
+                this.$stickyIntersectTable.classList.remove('is-active');
+            }
         }
     }
 
